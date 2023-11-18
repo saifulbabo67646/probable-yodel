@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-printed")
-model = VisionEncoderDecoderModel.from_pretrained("model/0.004166666666666667_28_20231106T005131")
+model = VisionEncoderDecoderModel.from_pretrained("model/captcha")
 
 def read_image(file) -> Image.Image:
     image = Image.open(io.BytesIO(file))
