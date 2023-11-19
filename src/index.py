@@ -6,7 +6,7 @@ import requests
 from PIL import Image
 import io
 import base64
-
+from src.dtos.ISayHelloDto import ISayHelloDto
 
 app = FastAPI()
 
@@ -46,6 +46,17 @@ def process_image(image):
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+
+@app.get("/hello/{name}")
+async def say_hello(name: str):
+    return {"message": f"Hello {name}"}
+
+
+@app.post("/hello")
+async def hello_message(dto: ISayHelloDto):
+    return {"message": f"Hello {dto.message}"}
+
 
 @app.post("/extract-text")
 async def extract_text(file: UploadFile = File(...)):
