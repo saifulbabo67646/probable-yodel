@@ -1,12 +1,21 @@
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel, pipeline
 import requests
 from PIL import Image
 import io
 import base64
 from src.dtos.ISayHelloDto import ISayHelloDto
+
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.decorator import cache
+import os
+
+# Add the directory containing ffmpeg to the PATH
+ffmpeg_directory = "C:\\Users\\User\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-6.1-full_build\\bin"
+os.environ["PATH"] = f"{ffmpeg_directory};{os.environ['PATH']}"
 
 app = FastAPI()
 
@@ -18,7 +27,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+transcriber = pipeline(model="openai/whisper-tiny")
 processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-printed")
 model = VisionEncoderDecoderModel.from_pretrained("src/model/captcha")
 
@@ -31,6 +40,7 @@ def read_base64_image(base64_data) -> Image.Image:
     image = Image.open(io.BytesIO(base64_bytes))
     return image
 
+# @cache()
 def process_image(image):
     # prepare image
     pixel_values = processor(image, return_tensors="pt").pixel_values
@@ -75,3 +85,22 @@ async def extract_text_bs64(base64_data: str = Form(None)):
         return JSONResponse(content={"text": text}, status_code=200)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
+    
+
+@app.get("/transcribe/")
+async def transcribe_audio(url: str = Query(..., title="Audio URL", description="URL of the audio file")):
+    try:
+        print(url)
+        transcription_result = transcriber(url)
+        print(transcription_result)
+        return JSONResponse(content={"text": transcription_result['text']}, status_code=200)
+    except Exception as e:
+        print(e)
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+    
+
+# @app.on_event("startup")
+# async def startup():
+#     # redis = aioredis.from_url("redis://default:vUo6k9BQ5tac6S8LE9EG8recFi3DiwNy@redis-12209.c292.ap-southeast-1-1.ec2.cloud.redislabs.com:12209")
+#     redis = aioredis.from_url("redis://localhost")
+#     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
